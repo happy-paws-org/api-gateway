@@ -1,9 +1,8 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import httpx
-import uvicorn
 
-app = FastAPI(title="API Gateway")
+app = FastAPI(title="Happy Paws API Gateway")
 
 app.add_middleware(
     CORSMiddleware,
@@ -14,33 +13,32 @@ app.add_middleware(
 )
 
 SERVICES = {
-    "users": "http://localhost:8001",
-    "pets": "http://localhost:8002",
-    "appointments": "http://localhost:8003",
-    "orders": "http://localhost:8004",
-    "notifications": "http://localhost:8005",
+    "users": "http://user-service:8001",
+    "pets": "http://pet-service:8002",
+    "appointments": "http://appointment-service:8003",
+    "orders": "http://order-service:8004",
+    "notifications": "http://notification-service:8005",
 }
 
 @app.get("/")
 def root():
-    return {"message": "API Gateway is running"}
+    return {"message": "API Gateway Running"}
 
 @app.api_route("/{service}/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
 async def route_request(service: str, path: str, request: Request):
     if service not in SERVICES:
-        return {"error": "Service not found"}
-    
+        raise HTTPException(status_code=404, detail="Service not found")
+
     url = f"{SERVICES[service]}/{path}"
-    
+
     async with httpx.AsyncClient() as client:
         body = await request.body()
+
         response = await client.request(
             method=request.method,
             url=url,
-            headers=dict(request.headers),
-            content=body
+            content=body,
+            headers=dict(request.headers)
         )
-        return response.json()
 
-if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+        return response.json()
